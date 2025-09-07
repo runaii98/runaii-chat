@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunAI Chat - Multi-Model AI Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #4f46e5, #06b6d4);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .model-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .model-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        
+        .message {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.assistant {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            margin-right: auto;
+        }
+        
+        .message-info {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .message-input:focus {
+            border-color: #4f46e5;
+        }
+        
+        .send-btn {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.3s;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            padding: 15px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 15px;
+            color: #666;
+        }
+        
+        .dots {
+            display: inline-block;
+            position: relative;
+        }
+        
+        .dots::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <h1>🤖 RunAI Chat</h1>
+            <p>Multi-Model AI Platform for Your Startup</p>
+            <div class="model-selector">
+                <button class="model-btn active" data-model="gpt-3.5-turbo">GPT-3.5</button>
+                <button class="model-btn" data-model="gpt-4">GPT-4</button>
+                <button class="model-btn" data-model="claude-3-sonnet">Claude</button>
+                <button class="model-btn" data-model="gemini-pro">Gemini</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div class="message-info">AI Assistant • Just now</div>
+                <div>Welcome to RunAI Chat! 🚀 Your AI startup platform is ready. Select a model above and start chatting!</div>
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            <span class="dots">AI is typing</span>
+        </div>
+        
+        <div class="input-area">
+            <div class="input-container">
+                <input type="text" class="message-input" id="messageInput" 
+                       placeholder="Type your message here..." 
+                       onkeypress="handleKeyPress(event)">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModel = 'gpt-3.5-turbo';
+        let isLoading = false;
+
+        // Model selection
+        document.querySelectorAll('.model-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentModel = btn.dataset.model;
+                
+                addMessage('system', `Switched to ${btn.textContent}`, 'Model Changed');
+            });
+        });
+
+        function addMessage(type, content, info = '') {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const displayInfo = info || `${type === 'user' ? 'You' : currentModel} • ${timestamp}`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-info">${displayInfo}</div>
+                <div>${content}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const message = input.value.trim();
+            
+            if (!message || isLoading) return;
+            
+            // Add user message
+            addMessage('user', message);
+            input.value = '';
+            
+            // Set loading state
+            isLoading = true;
+            sendBtn.disabled = true;
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        model: currentModel
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addMessage('assistant', data.message);
+                } else {
+                    addMessage('system', `Error: ${data.error}`, 'Error');
+                }
+            } catch (error) {
+                addMessage('system', `Connection error: ${error.message}`, 'Error');
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = false;
+                hideTypingIndicator();
+                input.focus();
+            }
+        }
+
+        // Focus input on load
+        document.getElementById('messageInput').focus();
+        
+        // Add welcome message with startup info
+        setTimeout(() => {
+            addMessage('assistant', `🎯 <strong>Your AI Startup Features:</strong><br>
+            • Multi-model support (GPT, Claude, Gemini)<br>
+            • Real-time chat interface<br>
+            • User authentication (coming soon)<br>
+            • Chat history & persistence<br>
+            • API integrations ready<br>
+            • Scalable architecture<br><br>
+            Ready to revolutionize AI chat! 🚀`, 'RunAI Platform');
+        }, 1000);
+    </script>
+</body>
+</html>

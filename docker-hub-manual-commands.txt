@@ -1,0 +1,31 @@
+# Manual Docker Hub Push Commands
+# Run these commands on your dev server
+
+# 1. Login to Docker Hub
+echo "YOUR_DOCKER_HUB_ACCESS_TOKEN" | docker login -u runaii98 --password-stdin
+
+# 2. List existing images to see what we have
+docker images | grep -E "(runai|postgres|openwebui)"
+
+# 3. Tag and push PostgreSQL image (adjust image name as needed)
+docker tag runai-postgres:latest runaii98/runai-postgres:latest
+docker push runaii98/runai-postgres:latest
+
+# 4. Tag and push All-in-One image (adjust image name as needed)  
+docker tag runai-allinone:latest runaii98/runai-allinone:latest
+docker push runaii98/runai-allinone:latest
+
+# 5. If images don't exist, build them first:
+# docker build -f Dockerfile.postgres -t runaii98/runai-postgres:latest .
+# docker push runaii98/runai-postgres:latest
+# 
+# docker build -f Dockerfile.all-in-one -t runaii98/runai-allinone:latest .
+# docker push runaii98/runai-allinone:latest
+
+# 6. Verify push success
+echo "✅ Images available at:"
+echo "https://hub.docker.com/r/runaii98/runai-postgres"
+echo "https://hub.docker.com/r/runaii98/runai-allinone"
+
+# 7. Logout for security
+docker logout

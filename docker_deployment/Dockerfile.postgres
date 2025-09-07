@@ -1,0 +1,33 @@
+# RunAI Chat PostgreSQL Docker Image
+# This image contains PostgreSQL with pre-configured OpenWebUI schema
+FROM postgres:15-alpine
+
+# Metadata
+LABEL maintainer="RunAI Chat Team"
+LABEL description="PostgreSQL database with OpenWebUI schema for RunAI Chat platform"
+LABEL version="1.0"
+
+# Environment variables for database configuration
+ENV POSTGRES_DB=runai_chat
+ENV POSTGRES_USER=runai_user
+ENV POSTGRES_PASSWORD=runai_secure_password
+
+# Copy schema file
+COPY ../database_util/openwebui_schema_backup.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY ../database_util/openwebui_data_backup.sql /docker-entrypoint-initdb.d/02-data.sql
+
+# Copy custom initialization script
+COPY init-runai-db.sh /docker-entrypoint-initdb.d/03-init-runai.sh
+
+# Make sure scripts are executable
+RUN chmod +x /docker-entrypoint-initdb.d/03-init-runai.sh
+
+# Create data volume
+VOLUME ["/var/lib/postgresql/data"]
+
+# Expose PostgreSQL port
+EXPOSE 5432
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD pg_isready -U $POSTGRES_USER -d $POSTGRES_DB || exit 1
